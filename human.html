@@ -1,0 +1,476 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PayPing — get a clean "PAID" without paying GCash's cut</title>
+<style>
+  :root {
+    --bg:#F6F9FC; --surface:#FFFFFF; --ink:#0A2540; --ink-soft:#425466; --muted:#8792A2;
+    --line:#E6EBF1; --accent:#635BFF; --accent-ink:#FFFFFF;
+    --good:#0BA678; --good-bg:#E7F8F1; --warn:#E8833A; --warn-bg:#FDF1E7;
+    --shadow:0 4px 6px -1px rgba(10,37,64,.08),0 2px 4px -2px rgba(10,37,64,.06);
+    --shadow-lg:0 24px 48px -12px rgba(10,37,64,.18); --radius:16px;
+  }
+  :root[data-palette="gcash"]  { --bg:#EEF5FF; --accent:#0076FF; --ink:#0B2A4A; --good:#1E9E5A; --good-bg:#E4F6EC; }
+  :root[data-palette="mint"]   { --bg:#F1FAF6; --accent:#0BA678; --ink:#0C3A2E; --good:#0BA678; --good-bg:#E4F6EC; }
+  :root[data-palette="sky"]    { --bg:#F1F7FF; --accent:#2E7CF6; --ink:#102A43; --good:#1E9E5A; --good-bg:#E4F6EC; }
+  :root[data-palette="sunset"] { --bg:#FFF6F0; --accent:#F97316; --ink:#3B2412; --good:#0BA678; --good-bg:#E7F8F1; }
+
+  * { box-sizing:border-box; }
+  html,body { margin:0; }
+  body { background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; transition:background .3s ease; }
+  .wrap { max-width:1080px; margin:0 auto; padding:24px 20px 72px; }
+
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:36px; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .logo { width:40px; height:40px; border-radius:12px; flex:none; background:var(--accent); color:var(--accent-ink); display:grid; place-items:center; font-weight:800; font-size:20px; box-shadow:var(--shadow); }
+  .brand h1 { font-size:20px; margin:0; letter-spacing:-.02em; }
+  .brand small { color:var(--muted); font-weight:500; }
+  .palettes { display:flex; align-items:center; gap:8px; }
+  .palettes span { color:var(--muted); font-size:12px; }
+  .swatch { width:26px; height:26px; border-radius:50%; border:2px solid var(--surface); cursor:pointer; box-shadow:0 0 0 1px var(--line); transition:transform .1s ease; }
+  .swatch:hover { transform:scale(1.12); }
+  .swatch.active { box-shadow:0 0 0 2px var(--accent); }
+
+  /* hero — deliberately not a tidy grid */
+  .hero { max-width:none; margin-bottom:14px; }
+  .hero h2 { font-size:clamp(28px,4.4vw,40px); line-height:1.12; letter-spacing:-.03em; margin:0 0 16px; max-width:16ch; }
+  .lede { font-size:18px; color:var(--ink-soft); max-width:62ch; }
+  .lede b { color:var(--ink); }
+  .maths { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 20px; margin:22px 0 10px; max-width:560px; }
+  .maths .row { display:flex; justify-content:space-between; padding:5px 0; font-size:15px; }
+  .maths .row.total { border-top:1px dashed var(--line); margin-top:6px; padding-top:10px; font-weight:800; }
+  .maths .save { color:var(--good); }
+  .maths small { color:var(--muted); font-size:12px; }
+
+  .demo-intro { margin:40px 0 14px; }
+  .demo-intro h3 { font-size:15px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 4px; }
+  .demo-intro p { margin:0; color:var(--ink-soft); font-size:15px; }
+
+  .controls { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:14px 0 18px; }
+  .tabs { display:inline-flex; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:4px; box-shadow:var(--shadow); }
+  .tab { border:0; background:transparent; color:var(--ink-soft); font:inherit; font-weight:600; font-size:14px; padding:8px 16px; border-radius:8px; cursor:pointer; }
+  .tab.active { background:var(--accent); color:var(--accent-ink); }
+  .btn { border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; font-weight:600; font-size:14px; padding:9px 16px; border-radius:10px; cursor:pointer; box-shadow:var(--shadow); }
+  .btn.primary { background:var(--accent); color:var(--accent-ink); border-color:transparent; }
+  .btn:active { transform:translateY(1px); }
+
+  .stage { display:none; }
+  .stage.active { display:block; }
+
+  .phone-row { display:grid; grid-template-columns:320px 1fr; gap:32px; align-items:start; }
+  @media (max-width:800px){ .phone-row { grid-template-columns:1fr; } }
+  .phone { width:320px; max-width:100%; margin:0 auto; background:#0B0F19; border-radius:40px; padding:12px; box-shadow:var(--shadow-lg); }
+  .phone .screen { background:var(--bg); border-radius:30px; overflow:hidden; height:620px; display:flex; flex-direction:column; }
+  .phone .notch { height:26px; display:grid; place-items:center; }
+  .phone .notch::after { content:""; width:120px; height:6px; background:#000; border-radius:999px; opacity:.35; }
+  .ongoing { background:rgba(11,166,120,.10); color:var(--good); font-size:12px; font-weight:700; padding:8px 16px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line); }
+  .ongoing svg { width:15px; height:15px; }
+  .app-head { padding:14px 18px; background:var(--surface); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .app-head .t { font-weight:700; font-size:15px; }
+  .status-pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:5px 10px; border-radius:999px; background:var(--good-bg); color:var(--good); }
+  .status-pill.off { background:var(--warn-bg); color:var(--warn); }
+  .app-body { padding:14px; overflow-y:auto; flex:1; }
+  .app-note { font-size:12px; color:var(--muted); text-align:center; margin:8px 0 14px; }
+  .protect { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:14px; box-shadow:var(--shadow); }
+  .protect-h { font-weight:800; font-size:13px; display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+  .protect-h svg { width:16px; height:16px; color:var(--good); }
+  .protect-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; padding:4px 0; }
+  .protect-row span { color:var(--ink-soft); }
+  .protect-row b.ok { color:var(--good); font-size:12px; }
+  .cap { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; box-shadow:var(--shadow); }
+  .cap .r1 { display:flex; justify-content:space-between; align-items:baseline; }
+  .cap .amt { font-weight:800; font-size:18px; color:var(--good); }
+  .cap .who { font-weight:600; font-size:14px; }
+  .cap .meta { font-size:12px; color:var(--muted); margin-top:3px; display:flex; justify-content:space-between; }
+  .cap .ref { font-variant-numeric:tabular-nums; }
+
+  .aside { color:var(--ink-soft); font-size:15px; }
+  .aside h3 { font-size:17px; margin:0 0 8px; color:var(--ink); }
+  .aside p { margin:0 0 12px; }
+  .toggle { display:inline-flex; align-items:center; gap:8px; margin-top:6px; font-size:14px; }
+  .switch { width:44px; height:26px; border-radius:999px; background:var(--good); position:relative; cursor:pointer; transition:background .2s; flex:none; }
+  .switch.off { background:var(--muted); }
+  .switch::after { content:""; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .2s; }
+  .switch.off::after { left:21px; }
+
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); }
+  .card-head { padding:16px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .card-head h3 { margin:0; font-size:16px; }
+  .banner { display:none; padding:12px 18px; background:var(--warn-bg); color:var(--warn); font-weight:700; font-size:14px; align-items:center; gap:10px; border-bottom:1px solid var(--line); }
+  .banner.show { display:flex; }
+  .feed { padding:12px; display:grid; gap:12px; }
+  .paid { display:flex; align-items:center; gap:14px; padding:14px 16px; border:1px solid var(--line); border-left:4px solid var(--good); border-radius:12px; background:var(--surface); }
+  .paid .check { width:40px; height:40px; border-radius:50%; background:var(--good-bg); color:var(--good); display:grid; place-items:center; font-size:20px; font-weight:800; flex:none; }
+  .paid .body { flex:1; }
+  .paid .top { display:flex; justify-content:space-between; align-items:baseline; }
+  .paid .amt { font-weight:800; font-size:20px; }
+  .paid .time { font-size:12px; color:var(--muted); }
+  .paid .sub { font-size:13px; color:var(--ink-soft); margin-top:2px; display:flex; gap:10px; flex-wrap:wrap; }
+  .tag { font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .tag.a { background:#EEF2FF; color:#4338CA; }
+  .tag.c { background:var(--good-bg); color:var(--good); }
+  .flash { animation:flash 1.4s ease; }
+  @keyframes flash { 0%{ background:var(--good-bg); transform:scale(1.01);} 100%{ background:var(--surface); transform:scale(1);} }
+
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px; }
+  @media (max-width:760px){ .grid4 { grid-template-columns:repeat(2,1fr);} }
+  .stat { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+  .stat .k { font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .stat .v { font-size:26px; font-weight:800; margin-top:6px; letter-spacing:-.02em; }
+  .stat .v.small { font-size:18px; }
+  .stat .sub { font-size:12px; color:var(--muted); margin-top:2px; }
+  .dash-2 { display:grid; grid-template-columns:1.4fr 1fr; gap:18px; }
+  @media (max-width:860px){ .dash-2 { grid-template-columns:1fr; } }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  td .ref { font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+  .bars { padding:18px; display:flex; align-items:flex-end; gap:10px; height:180px; }
+  .bar { flex:1; background:var(--accent); border-radius:8px 8px 0 0; opacity:.85; position:relative; min-height:4px; }
+  .bar span { position:absolute; bottom:-20px; left:0; right:0; text-align:center; font-size:11px; color:var(--muted); }
+  .recon { padding:16px 18px; }
+  .recon .line { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .recon .line:last-child { border-bottom:0; }
+  .recon .ok { color:var(--good); font-weight:700; }
+
+  /* the "what keeps it running" list — uneven on purpose */
+  .keeps { margin:44px 0 8px; }
+  .keeps > h3 { font-size:22px; letter-spacing:-.02em; margin:0 0 6px; }
+  .keeps > .sub { color:var(--ink-soft); margin:0 0 20px; max-width:60ch; }
+  .keep { display:flex; gap:16px; padding:16px 0; border-top:1px solid var(--line); }
+  .keep:last-of-type { border-bottom:1px solid var(--line); }
+  .kicon { width:44px; height:44px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); }
+  .kicon svg { width:22px; height:22px; color:var(--accent); }
+  .keep .kb h4 { margin:2px 0 4px; font-size:16px; }
+  .keep .kb p { margin:0; color:var(--ink-soft); font-size:14.5px; }
+
+  .heads { margin:36px 0 8px; background:var(--warn-bg); border:1px solid #F3D9C2; border-left:4px solid var(--warn); border-radius:var(--radius); padding:16px 20px; }
+  .heads b { color:#B45309; }
+  .heads p { margin:6px 0 0; color:#7C4A1E; font-size:14.5px; }
+
+  .founder { margin-top:34px; padding-top:20px; border-top:1px solid var(--line); color:var(--ink-soft); font-size:14.5px; }
+  .founder .sig { font-weight:700; color:var(--ink); }
+  .founder .fine { color:var(--muted); font-size:12.5px; margin-top:10px; }
+</style>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">₱</div>
+      <div>
+        <h1>PayPing</h1>
+        <small>a clean "PAID" at the counter, minus the merchant fee</small>
+      </div>
+    </div>
+    <div class="palettes">
+      <span>Theme</span>
+      <div class="swatch active" style="background:#635BFF" data-p="graphite"></div>
+      <div class="swatch" style="background:#0076FF" data-p="gcash"></div>
+      <div class="swatch" style="background:#0BA678" data-p="mint"></div>
+      <div class="swatch" style="background:#2E7CF6" data-p="sky"></div>
+      <div class="swatch" style="background:#F97316" data-p="sunset"></div>
+    </div>
+  </div>
+
+  <!-- HERO: story-first, not feature-first -->
+  <div class="hero">
+    <h2>We were tired of losing 2% on every GCash sale.</h2>
+    <p class="lede">
+      If you take GCash through a Business account, they keep <b>2 to 2.5%</b> of every payment.
+      On one ₱150 order that's loose change. Run a busy counter all month and it quietly turns into
+      real money you never see. So we let the store collect into a plain <b>personal GCash</b> — where
+      sending money is free — and PayPing still gives the cashier an instant, unmistakable
+      <b>PAID</b> the moment it lands. Nobody has to squint at a phone or wait for a screenshot.
+    </p>
+
+    <div class="maths">
+      <div class="row"><span>Say you take ₱120,000 in GCash a month</span><span></span></div>
+      <div class="row"><span>GCash Business fee at ~2.2%</span><span>−₱2,640 / mo</span></div>
+      <div class="row"><span>Personal GCash (what PayPing uses)</span><span>₱0</span></div>
+      <div class="row total"><span>You keep</span><span class="save">₱2,640 every month</span></div>
+      <small>Rough numbers, but you get the point. It scales with how busy you are.</small>
+    </div>
+  </div>
+
+  <!-- DEMO -->
+  <div class="demo-intro">
+    <h3>See it work</h3>
+    <p>Three screens: the phone that reads the payment, the cashier's view, and the owner's dashboard. Poke around.</p>
+  </div>
+
+  <div class="controls">
+    <div class="tabs">
+      <button class="tab active" data-stage="phone">Phone app</button>
+      <button class="tab" data-stage="cashier">Cashier screen</button>
+      <button class="tab" data-stage="dash">Owner dashboard</button>
+    </div>
+    <button class="btn primary" id="simulate">Send a test payment</button>
+  </div>
+
+  <!-- PHONE -->
+  <div class="stage active" id="stage-phone">
+    <div class="phone-row">
+      <div class="phone">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="ongoing" id="ongoing">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+            <span id="ongoing-t">PayPing is running · watching for payments</span>
+          </div>
+          <div class="app-head">
+            <div class="t">PayPing Reader</div>
+            <div class="status-pill" id="reader-pill"><span style="width:7px;height:7px;border-radius:50%;background:currentColor"></span> Online</div>
+          </div>
+          <div class="app-body" id="phone-body">
+            <div class="protect">
+              <div class="protect-h">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V5z"/><path d="M9 12l2 2 4-4"/></svg>
+                Keeping it alive
+              </div>
+              <div class="protect-row"><span>Background service</span><b class="ok" id="p-bg">running</b></div>
+              <div class="protect-row"><span>Battery saver</span><b class="ok">excluded ✓</b></div>
+              <div class="protect-row"><span>Restart after reboot</span><b class="ok">on ✓</b></div>
+              <div class="protect-row"><span>Last check-in</span><b class="ok" id="p-hb">12s ago</b></div>
+            </div>
+            <div class="app-note">It only ever looks at GCash. Everything else on the phone is none of its business.</div>
+          </div>
+        </div>
+      </div>
+      <div class="aside">
+        <h3>What's actually happening here</h3>
+        <p>
+          When money hits the owner's GCash, the app catches that notification, reads off the amount
+          (and the reference number, if GCash bothered to include it), and fires it up to the store.
+          That's the whole trick. No screenshots, no group chat, no "pa-verify po."
+        </p>
+        <p>
+          It reads GCash and nothing else — your texts, your bank alerts, your Messenger, all invisible to it.
+          We were pretty firm about that; it's someone's personal phone.
+        </p>
+        <p style="font-size:13.5px;color:var(--muted)">
+          Flip this and watch the store notice within seconds:
+        </p>
+        <div class="toggle">
+          <div class="switch" id="reader-switch"></div>
+          <span>Turn the reader off</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASHIER -->
+  <div class="stage" id="stage-cashier">
+    <div class="card">
+      <div class="card-head">
+        <h3>At the register</h3>
+        <span class="status-pill" id="cashier-pill"><span style="width:7px;height:7px;border-radius:50%;background:currentColor"></span> Reader online</span>
+      </div>
+      <div class="banner" id="cashier-banner">Heads up — the reader went quiet. Check payments the old way until it's back.</div>
+      <div class="feed" id="cashier-feed"></div>
+    </div>
+    <p style="color:var(--ink-soft);font-size:14px;margin-top:14px">
+      Tap a payment to pin it to whoever's at the counter. Two ways to be sure it's the right one:
+      <span class="tag a">by amount</span> quick, the cashier just matches the peso figure —
+      or <span class="tag c">by ref no.</span> exact, when the customer's reference number came through.
+      Most of the day you'll use the first one.
+    </p>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="stage" id="stage-dash">
+    <div class="grid4">
+      <div class="stat"><div class="k">Today</div><div class="v" id="d-total">₱4,285</div><div class="sub" id="d-count">23 payments</div></div>
+      <div class="stat"><div class="k">This week</div><div class="v">₱28,940</div><div class="sub">busier than last week</div></div>
+      <div class="stat"><div class="k">Reader</div><div class="v small" id="d-status" style="color:var(--good)">online</div><div class="sub">checked in just now</div></div>
+      <div class="stat"><div class="k">Pinned to an order</div><div class="v small">21 <span style="color:var(--muted);font-weight:500">of 23</span></div><div class="sub">2 still loose</div></div>
+    </div>
+    <div class="dash-2">
+      <div class="card">
+        <div class="card-head"><h3>Latest payments</h3><button class="btn">Export CSV</button></div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Time</th><th>From</th><th>Amount</th><th>Ref no.</th><th>Matched</th></tr></thead>
+            <tbody id="dash-rows">
+              <tr><td>2:14 PM</td><td>Juan D.</td><td>₱150.00</td><td class="ref">1234567890</td><td><span class="tag c">ref</span></td></tr>
+              <tr><td>2:02 PM</td><td>Maria S.</td><td>₱85.00</td><td class="ref">—</td><td><span class="tag a">amount</span></td></tr>
+              <tr><td>1:47 PM</td><td>Ana R.</td><td>₱320.00</td><td class="ref">9988776655</td><td><span class="tag c">ref</span></td></tr>
+              <tr><td>1:31 PM</td><td>Leo M.</td><td>₱75.00</td><td class="ref">4455667788</td><td><span class="tag c">ref</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:18px">
+          <div class="card-head"><h3>Busy days</h3></div>
+          <div class="bars">
+            <div class="bar" style="height:55%"><span>Mon</span></div>
+            <div class="bar" style="height:70%"><span>Tue</span></div>
+            <div class="bar" style="height:45%"><span>Wed</span></div>
+            <div class="bar" style="height:85%"><span>Thu</span></div>
+            <div class="bar" style="height:100%"><span>Fri</span></div>
+            <div class="bar" style="height:60%"><span>Sat</span></div>
+            <div class="bar" style="height:30%"><span>Sun</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Does it match GCash?</h3></div>
+          <div class="recon">
+            <div class="line"><span>PayPing counted</span><b>23</b></div>
+            <div class="line"><span>GCash app shows</span><b>23</b></div>
+            <div class="line"><span></span><span class="ok">nothing slipped through</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHAT KEEPS IT RUNNING — uneven list, real icons -->
+  <div class="keeps">
+    <h3>The boring part that makes or breaks it</h3>
+    <p class="sub">
+      An app that reads notifications is easy. An app that's <em>still reading them three weeks later</em>,
+      on a phone someone actually uses every day, is the hard part. Here's how we keep it honest.
+    </p>
+
+    <div class="keep">
+      <div class="kicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="M5.6 6.6a9 9 0 1 0 12.8 0"/></svg></div>
+      <div class="kb">
+        <h4>It just runs. In the background. All day.</h4>
+        <p>Install it once and leave it. You don't open it, you don't tap anything — it sits there watching for GCash even with the phone locked in a drawer.</p>
+      </div>
+    </div>
+
+    <div class="keep">
+      <div class="kicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="16" height="10" rx="2"/><path d="M6 11v2M22 11v2"/></svg></div>
+      <div class="kb">
+        <h4>Phones try to kill it. We plan for that.</h4>
+        <p>Xiaomi, Oppo, Realme — they're ruthless about shutting down background apps to save battery, and that's the number-one way these things die quietly. Setup walks you through switching that off for PayPing, and it climbs back up on its own after a restart.</p>
+      </div>
+    </div>
+
+    <div class="keep">
+      <div class="kicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg></div>
+      <div class="kb">
+        <h4>If it ever does stop, you find out fast.</h4>
+        <p>The phone taps the store on the shoulder every minute. Miss a few and the register throws up a warning — because a dead reader and a slow day look exactly the same, and that's the mistake that costs you money.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADS UP — casual, not a corporate "scope note" -->
+  <div class="heads">
+    <b>Before you get the wrong idea —</b>
+    <p>
+      This only knows about money that comes into that one GCash. Cash, cards, GrabPay, your other e-wallet —
+      not here, that's your POS's job. And it's Android only. Apple flat-out won't let apps read notifications,
+      so an iPhone is a non-starter. Nothing we can do about that one, sorry.
+    </p>
+  </div>
+
+  <div class="founder">
+    Built by a small team that got asked to solve this one too many times to keep saying no.
+    If you're the store owner reading this: yes, the ₱1 test-payment thing in the demo is real — that's
+    exactly how we'd set you up on day one, sending yourself a peso to make sure it reads clean before you trust it with a queue.
+    <div style="margin-top:10px" class="sig">— the PayPing folks</div>
+    <div class="fine">Working name, working design. This page is a mockup we put together to talk it through — real thing gets your branding.</div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.swatch').forEach(function (s) {
+    s.addEventListener('click', function () {
+      document.querySelectorAll('.swatch').forEach(function (x) { x.classList.remove('active'); });
+      s.classList.add('active');
+      document.documentElement.setAttribute('data-palette', s.dataset.p);
+    });
+  });
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('active'); });
+      document.querySelectorAll('.stage').forEach(function (x) { x.classList.remove('active'); });
+      t.classList.add('active');
+      document.getElementById('stage-' + t.dataset.stage).classList.add('active');
+    });
+  });
+
+  var names = ['Juan D.', 'Maria S.', 'Ana R.', 'Leo M.', 'Cathy P.', 'Ben T.', 'Rico G.', 'Ella F.'];
+  var seeds = [
+    { who: 'Juan D.',  amt: 150, ref: '1234567890', t: '2:14 PM' },
+    { who: 'Maria S.', amt: 85,  ref: null,          t: '2:02 PM' },
+    { who: 'Ana R.',   amt: 320, ref: '9988776655', t: '1:47 PM' }
+  ];
+  var counter = 23, total = 4285;
+  function peso(n) { return '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 }); }
+  function capCard(p) {
+    return '<div class="cap flash"><div class="r1"><span class="who">' + p.who + '</span>' +
+      '<span class="amt">' + peso(p.amt) + '</span></div>' +
+      '<div class="meta"><span>' + p.t + '</span><span class="ref">' +
+      (p.ref ? 'Ref ' + p.ref : 'no ref') + '</span></div></div>';
+  }
+  function paidCard(p) {
+    var tag = p.ref ? '<span class="tag c">ref ' + p.ref + '</span>' : '<span class="tag a">by amount</span>';
+    return '<div class="paid flash"><div class="check">✓</div><div class="body">' +
+      '<div class="top"><span class="amt">' + peso(p.amt) + '</span><span class="time">' + p.t + '</span></div>' +
+      '<div class="sub"><span>from ' + p.who + '</span>' + tag + '</div></div></div>';
+  }
+  var phoneBody = document.getElementById('phone-body');
+  var feed = document.getElementById('cashier-feed');
+  var dashRows = document.getElementById('dash-rows');
+  seeds.forEach(function (p) {
+    phoneBody.insertAdjacentHTML('beforeend', capCard(p));
+    feed.insertAdjacentHTML('beforeend', paidCard(p));
+  });
+
+  document.getElementById('simulate').addEventListener('click', function () {
+    var pick = (counter * 37) % names.length;
+    var who = names[pick];
+    var amt = [50, 75, 100, 120, 150, 200, 250, 320][(counter * 13) % 8];
+    var hasRef = (counter % 3) !== 1;
+    var ref = hasRef ? String(1000000000 + (counter * 8675309) % 8999999999) : null;
+    var p = { who: who, amt: amt, ref: ref, t: 'just now' };
+    var note = phoneBody.querySelector('.app-note');
+    note.insertAdjacentHTML('afterend', capCard(p));
+    feed.insertAdjacentHTML('afterbegin', paidCard(p));
+    dashRows.insertAdjacentHTML('afterbegin',
+      '<tr><td>just now</td><td>' + who + '</td><td>' + peso(amt) + '</td><td class="ref">' +
+      (ref || '—') + '</td><td>' + (hasRef ? '<span class="tag c">ref</span>' : '<span class="tag a">amount</span>') + '</td></tr>');
+    counter++; total += amt;
+    document.getElementById('d-total').textContent = peso(total).replace('.00', '');
+    document.getElementById('d-count').textContent = counter + ' payments';
+  });
+
+  var on = true;
+  var sw = document.getElementById('reader-switch');
+  function setReader(state) {
+    on = state;
+    sw.classList.toggle('off', !on);
+    var rp = document.getElementById('reader-pill');
+    var cp = document.getElementById('cashier-pill');
+    var ds = document.getElementById('d-status');
+    var banner = document.getElementById('cashier-banner');
+    var ongoing = document.getElementById('ongoing');
+    var ot = document.getElementById('ongoing-t');
+    var pbg = document.getElementById('p-bg');
+    var phb = document.getElementById('p-hb');
+    if (on) {
+      rp.className = 'status-pill'; rp.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:currentColor"></span> Online';
+      cp.className = 'status-pill'; cp.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:currentColor"></span> Reader online';
+      ds.style.color = 'var(--good)'; ds.textContent = 'online';
+      banner.classList.remove('show');
+      ongoing.style.background = 'rgba(11,166,120,.10)'; ongoing.style.color = 'var(--good)';
+      ot.textContent = 'PayPing is running · watching for payments';
+      pbg.style.color = 'var(--good)'; pbg.textContent = 'running';
+      phb.style.color = 'var(--good)'; phb.textContent = '12s ago';
+    } else {
+      rp.className = 'status-pill off'; rp.innerHTML = 'Offline';
+      cp.className = 'status-pill off'; cp.innerHTML = 'Reader offline';
+      ds.style.color = 'var(--warn)'; ds.textContent = 'offline';
+      banner.classList.add('show');
+      ongoing.style.background = 'var(--warn-bg)'; ongoing.style.color = 'var(--warn)';
+      ot.textContent = 'PayPing stopped · not watching right now';
+      pbg.style.color = 'var(--warn)'; pbg.textContent = 'stopped';
+      phb.style.color = 'var(--warn)'; phb.textContent = '3 min ago';
+    }
+  }
+  sw.addEventListener('click', function () { setReader(!on); });
+</script>
