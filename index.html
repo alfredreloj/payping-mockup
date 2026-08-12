@@ -1,0 +1,504 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PayPing — GCash payments, confirmed at the counter</title>
+<style>
+  /* ===================================================================
+     PayPing — client pitch mockup (self-contained, no build step)
+     Palettes swap via [data-palette] on :root. Default = Graphite.
+     =================================================================== */
+
+  :root {
+    --bg:        #F6F9FC;
+    --surface:   #FFFFFF;
+    --ink:       #0A2540;
+    --ink-soft:  #425466;
+    --muted:     #8792A2;
+    --line:      #E6EBF1;
+    --accent:    #635BFF;
+    --accent-ink:#FFFFFF;
+    --good:      #0BA678;
+    --good-bg:   #E7F8F1;
+    --warn:      #E8833A;
+    --warn-bg:   #FDF1E7;
+    --shadow:    0 4px 6px -1px rgba(10,37,64,.08), 0 2px 4px -2px rgba(10,37,64,.06);
+    --shadow-lg: 0 24px 48px -12px rgba(10,37,64,.18);
+    --radius:    16px;
+  }
+  :root[data-palette="gcash"]  { --bg:#EEF5FF; --accent:#0076FF; --ink:#0B2A4A; --good:#1E9E5A; --good-bg:#E4F6EC; }
+  :root[data-palette="mint"]   { --bg:#F1FAF6; --accent:#0BA678; --ink:#0C3A2E; --good:#0BA678; --good-bg:#E4F6EC; }
+  :root[data-palette="sky"]    { --bg:#F1F7FF; --accent:#2E7CF6; --ink:#102A43; --good:#1E9E5A; --good-bg:#E4F6EC; }
+  :root[data-palette="sunset"] { --bg:#FFF6F0; --accent:#F97316; --ink:#3B2412; --good:#0BA678; --good-bg:#E7F8F1; }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: background .3s ease;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 72px; }
+
+  /* ---------- top bar ---------- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px; flex: none;
+    background: var(--accent); color: var(--accent-ink);
+    display: grid; place-items: center; font-weight: 800; font-size: 20px;
+    box-shadow: var(--shadow);
+  }
+  .brand h1 { font-size: 20px; margin: 0; letter-spacing: -.02em; }
+  .brand small { color: var(--muted); font-weight: 500; }
+
+  .palettes { display: flex; align-items: center; gap: 8px; }
+  .palettes span { color: var(--muted); font-size: 12px; margin-right: 2px; }
+  .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--surface); cursor: pointer; box-shadow: 0 0 0 1px var(--line); transition: transform .1s ease; }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch.active { box-shadow: 0 0 0 2px var(--accent); }
+
+  /* ---------- hero ---------- */
+  .hero { margin-bottom: 28px; }
+  .hero h2 { font-size: clamp(26px, 4vw, 38px); line-height: 1.15; letter-spacing: -.03em; margin: 0 0 10px; max-width: 20ch; }
+  .hero p { font-size: 17px; color: var(--ink-soft); max-width: 60ch; margin: 0 0 20px; }
+
+  .value { display: flex; gap: 12px; flex-wrap: wrap; }
+  .chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--ink-soft); box-shadow: var(--shadow); display: flex; align-items: center; gap: 8px; }
+  .chip b { color: var(--good); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+
+  /* ---------- flow ---------- */
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin: 24px 0 28px; box-shadow: var(--shadow); }
+  .flow .node { text-align: center; padding: 8px; }
+  .flow .node .ic { font-size: 26px; }
+  .flow .node b { display: block; font-size: 14px; margin-top: 4px; }
+  .flow .node span { font-size: 12px; color: var(--muted); }
+  .flow .arw { color: var(--accent); font-size: 22px; text-align: center; }
+  @media (max-width: 720px) { .flow { grid-template-columns: 1fr; } .flow .arw { transform: rotate(90deg); } }
+
+  /* ---------- screen viewer ---------- */
+  .controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
+  .tab { border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-weight: 600; font-size: 14px; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+  .tab.active { background: var(--accent); color: var(--accent-ink); }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 14px; padding: 9px 16px; border-radius: 10px; cursor: pointer; box-shadow: var(--shadow); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .btn:active { transform: translateY(1px); }
+
+  .stage { display: none; }
+  .stage.active { display: block; }
+
+  /* ---------- phone frame ---------- */
+  .phone-row { display: grid; grid-template-columns: 320px 1fr; gap: 28px; align-items: start; }
+  @media (max-width: 800px) { .phone-row { grid-template-columns: 1fr; } }
+  .phone { width: 320px; max-width: 100%; margin: 0 auto; background: #0B0F19; border-radius: 40px; padding: 12px; box-shadow: var(--shadow-lg); }
+  .phone .screen { background: var(--bg); border-radius: 30px; overflow: hidden; height: 620px; display: flex; flex-direction: column; }
+  .phone .notch { height: 26px; display: grid; place-items: center; }
+  .phone .notch::after { content: ""; width: 120px; height: 6px; background: #000; border-radius: 999px; opacity: .35; }
+  .app-head { padding: 14px 18px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+  .app-head .t { font-weight: 700; font-size: 15px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--good-bg); color: var(--good); }
+  .status-pill.off { background: var(--warn-bg); color: var(--warn); }
+  .app-body { padding: 14px; overflow-y: auto; flex: 1; }
+  .app-note { font-size: 12px; color: var(--muted); text-align: center; margin: 8px 0 14px; }
+  .cap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; box-shadow: var(--shadow); }
+  .cap .r1 { display: flex; justify-content: space-between; align-items: baseline; }
+  .cap .amt { font-weight: 800; font-size: 18px; color: var(--good); }
+  .cap .who { font-weight: 600; font-size: 14px; }
+  .cap .meta { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; justify-content: space-between; }
+  .cap .ref { font-variant-numeric: tabular-nums; }
+
+  .side-notes { }
+  .side-notes h3 { font-size: 16px; margin: 0 0 10px; }
+  .side-notes ul { margin: 0; padding-left: 18px; color: var(--ink-soft); font-size: 14px; }
+  .side-notes li { margin-bottom: 8px; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 14px; }
+  .switch { width: 44px; height: 26px; border-radius: 999px; background: var(--good); position: relative; cursor: pointer; transition: background .2s; flex: none; }
+  .switch.off { background: var(--muted); }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .2s; }
+  .switch.off::after { left: 21px; }
+
+  /* ---------- reliability band ---------- */
+  .reliability { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0 0 28px; }
+  @media (max-width: 760px) { .reliability { grid-template-columns: 1fr; } }
+  .rel-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--good); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+  .rel-item .rel-ic { font-size: 24px; }
+  .rel-item b { display: block; font-size: 15px; margin: 6px 0 4px; }
+  .rel-item span { font-size: 13px; color: var(--ink-soft); }
+
+  /* ---------- ongoing notification (Android) ---------- */
+  .ongoing { background: rgba(11,166,120,.10); color: var(--good); font-size: 12px; font-weight: 700; padding: 8px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
+
+  /* ---------- protection card (in phone) ---------- */
+  .protect { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .protect-h { font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .protect-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 4px 0; }
+  .protect-row span { color: var(--ink-soft); }
+  .protect-row b.ok { color: var(--good); font-size: 12px; }
+
+  /* ---------- generic card ---------- */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .card-head { padding: 16px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+  .card-head h3 { margin: 0; font-size: 16px; }
+
+  /* ---------- cashier ---------- */
+  .banner { display: none; padding: 12px 18px; background: var(--warn-bg); color: var(--warn); font-weight: 700; font-size: 14px; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
+  .banner.show { display: flex; }
+  .feed { padding: 12px; display: grid; gap: 12px; }
+  .paid { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--line); border-left: 4px solid var(--good); border-radius: 12px; background: var(--surface); }
+  .paid .check { width: 40px; height: 40px; border-radius: 50%; background: var(--good-bg); color: var(--good); display: grid; place-items: center; font-size: 20px; font-weight: 800; flex: none; }
+  .paid .body { flex: 1; }
+  .paid .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .paid .amt { font-weight: 800; font-size: 20px; }
+  .paid .time { font-size: 12px; color: var(--muted); }
+  .paid .sub { font-size: 13px; color: var(--ink-soft); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .tag.a { background: #EEF2FF; color: #4338CA; }
+  .tag.c { background: var(--good-bg); color: var(--good); }
+  .flash { animation: flash 1.4s ease; }
+  @keyframes flash { 0% { background: var(--good-bg); transform: scale(1.01); } 100% { background: var(--surface); transform: scale(1); } }
+
+  /* ---------- dashboard ---------- */
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 760px) { .grid4 { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+  .stat .k { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .stat .v { font-size: 26px; font-weight: 800; margin-top: 6px; letter-spacing: -.02em; }
+  .stat .v.small { font-size: 18px; }
+  .stat .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .dash-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+  @media (max-width: 860px) { .dash-2 { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  td .ref { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  .bars { padding: 18px; display: flex; align-items: flex-end; gap: 10px; height: 180px; }
+  .bar { flex: 1; background: var(--accent); border-radius: 8px 8px 0 0; opacity: .85; position: relative; min-height: 4px; }
+  .bar span { position: absolute; bottom: -20px; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--muted); }
+  .recon { padding: 16px 18px; }
+  .recon .line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .recon .line:last-child { border-bottom: 0; }
+  .recon .ok { color: var(--good); font-weight: 700; }
+
+  .foot { margin-top: 36px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  .foot b { color: var(--ink-soft); }
+</style>
+
+<div class="wrap">
+
+  <!-- ============ TOP BAR ============ -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">₱</div>
+      <div>
+        <h1>PayPing</h1>
+        <small>GCash payments, confirmed at the counter</small>
+      </div>
+    </div>
+    <div class="palettes">
+      <span>Theme</span>
+      <div class="swatch active" style="background:#635BFF" data-p="graphite" title="Graphite"></div>
+      <div class="swatch" style="background:#0076FF" data-p="gcash" title="GCash Blue"></div>
+      <div class="swatch" style="background:#0BA678" data-p="mint" title="Mint"></div>
+      <div class="swatch" style="background:#2E7CF6" data-p="sky" title="Sky"></div>
+      <div class="swatch" style="background:#F97316" data-p="sunset" title="Sunset"></div>
+    </div>
+  </div>
+
+  <!-- ============ HERO ============ -->
+  <div class="hero">
+    <h2>Know a GCash payment landed — the instant it does.</h2>
+    <p>
+      When a customer pays, GCash notifies the owner's phone. PayPing reads that notification,
+      pulls out the amount and reference number, and shows the cashier <b>PAID ✓</b> in real time —
+      no more staring at a phone or waiting for a screenshot.
+    </p>
+    <div class="value">
+      <div class="chip"><span class="dot"></span> Uses a personal GCash — <b>0% fees</b></div>
+      <div class="chip">vs. GCash Business <b style="color:var(--warn)">2–2.5% / txn</b></div>
+      <div class="chip">Live cashier confirmation</div>
+      <div class="chip">Owner dashboard &amp; reports</div>
+    </div>
+  </div>
+
+  <!-- ============ FLOW ============ -->
+  <div class="flow">
+    <div class="node"><div class="ic">📱</div><b>Owner's phone</b><span>reads GCash notification</span></div>
+    <div class="arw">→</div>
+    <div class="node"><div class="ic">☁️</div><b>PayPing cloud</b><span>stores the payment</span></div>
+    <div class="arw">→</div>
+    <div class="node"><div class="ic">🧾</div><b>Store screen</b><span>shows PAID ✓ live</span></div>
+  </div>
+
+  <!-- ============ RELIABILITY BAND ============ -->
+  <div class="reliability">
+    <div class="rel-item">
+      <div class="rel-ic">🟢</div>
+      <b>Runs in the background — always on</b>
+      <span>Owner installs it once and forgets it. No need to open the app — it reads payments 24/7 on its own, even with the phone in the pocket.</span>
+    </div>
+    <div class="rel-item">
+      <div class="rel-ic">🔋</div>
+      <b>Survives battery savers &amp; reboots</b>
+      <span>Whitelisted from battery optimization and auto-restarts if the phone turns off and on. Set up once during install.</span>
+    </div>
+    <div class="rel-item">
+      <div class="rel-ic">❤️</div>
+      <b>Heartbeat safety net</b>
+      <span>Pings the store every minute. If the reader ever stops for any reason, the cashier is warned in seconds — silence is never mistaken for "no payments."</span>
+    </div>
+  </div>
+
+  <!-- ============ CONTROLS ============ -->
+  <div class="controls">
+    <div class="tabs">
+      <button class="tab active" data-stage="phone">📱 Phone app</button>
+      <button class="tab" data-stage="cashier">🧾 Cashier screen</button>
+      <button class="tab" data-stage="dash">📊 Owner dashboard</button>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="simulate">▶ Simulate a GCash payment</button>
+    </div>
+  </div>
+
+  <!-- ============ STAGE: PHONE ============ -->
+  <div class="stage active" id="stage-phone">
+    <div class="phone-row">
+      <div class="phone">
+        <div class="screen">
+          <div class="notch"></div>
+          <div class="ongoing" id="ongoing">🔔 PayPing is running · reading payments</div>
+          <div class="app-head">
+            <div class="t">PayPing Reader</div>
+            <div class="status-pill" id="reader-pill"><span class="dot" style="background:currentColor"></span> Online</div>
+          </div>
+          <div class="app-body" id="phone-body">
+            <div class="protect">
+              <div class="protect-h">🛡 Always-on protection</div>
+              <div class="protect-row"><span>Background service</span><b class="ok" id="p-bg">● Active</b></div>
+              <div class="protect-row"><span>Battery optimization</span><b class="ok">✓ Off (protected)</b></div>
+              <div class="protect-row"><span>Auto-restart on reboot</span><b class="ok">✓ On</b></div>
+              <div class="protect-row"><span>Last heartbeat</span><b class="ok" id="p-hb">12s ago</b></div>
+            </div>
+            <div class="app-note">Reading GCash notifications only · last check just now</div>
+            <!-- captures injected here -->
+          </div>
+        </div>
+      </div>
+      <div class="side-notes">
+        <h3>What the phone app does</h3>
+        <ul>
+          <li><b>Reads GCash notifications only.</b> It ignores every other app — texts, chats, bank alerts are never touched.</li>
+          <li><b>Pulls out amount + reference number</b> the moment a payment lands, and sends it to the store.</li>
+          <li><b>Stays alive in the background</b> and pings the store every minute so they know it's working.</li>
+          <li><b>Saves the reference number when GCash includes it</b> — used for exact matching and reconciliation.</li>
+        </ul>
+        <div class="toggle">
+          <div class="switch" id="reader-switch"></div>
+          <span>Toggle reader on/off (see the cashier's offline warning)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ STAGE: CASHIER ============ -->
+  <div class="stage" id="stage-cashier">
+    <div class="card">
+      <div class="card-head">
+        <h3>Counter — live payments</h3>
+        <span class="status-pill" id="cashier-pill"><span class="dot" style="background:currentColor"></span> Reader online</span>
+      </div>
+      <div class="banner" id="cashier-banner">⚠ Payment reader offline — confirm payments manually until it's back.</div>
+      <div class="feed" id="cashier-feed">
+        <!-- paid cards injected here -->
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin-top:14px">
+      <b style="color:var(--ink-soft)">Matching:</b> tap a payment to tie it to an order.
+      <span class="tag a">A · by amount</span> cashier eyeballs the amount &nbsp;·&nbsp;
+      <span class="tag c">C · by ref no.</span> exact match when the reference number came through.
+    </p>
+  </div>
+
+  <!-- ============ STAGE: DASHBOARD ============ -->
+  <div class="stage" id="stage-dash">
+    <div class="grid4">
+      <div class="stat"><div class="k">Received today</div><div class="v" id="d-total">₱4,285</div><div class="sub" id="d-count">23 payments</div></div>
+      <div class="stat"><div class="k">This week</div><div class="v">₱28,940</div><div class="sub">+12% vs last week</div></div>
+      <div class="stat"><div class="k">Reader status</div><div class="v small" id="d-status" style="color:var(--good)">● Online</div><div class="sub">last seen just now</div></div>
+      <div class="stat"><div class="k">Matched to orders</div><div class="v small">21 <span style="color:var(--muted);font-weight:500">/ 23</span></div><div class="sub">2 unmatched</div></div>
+    </div>
+
+    <div class="dash-2">
+      <div class="card">
+        <div class="card-head"><h3>Recent payments</h3><button class="btn">⬇ Export CSV</button></div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Time</th><th>From</th><th>Amount</th><th>Ref no.</th><th>Match</th></tr></thead>
+            <tbody id="dash-rows">
+              <tr><td>2:14 PM</td><td>Juan D.</td><td>₱150.00</td><td class="ref">1234567890</td><td><span class="tag c">C</span></td></tr>
+              <tr><td>2:02 PM</td><td>Maria S.</td><td>₱85.00</td><td class="ref">—</td><td><span class="tag a">A</span></td></tr>
+              <tr><td>1:47 PM</td><td>Ana R.</td><td>₱320.00</td><td class="ref">9988776655</td><td><span class="tag c">C</span></td></tr>
+              <tr><td>1:31 PM</td><td>Leo M.</td><td>₱75.00</td><td class="ref">4455667788</td><td><span class="tag c">C</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:18px">
+          <div class="card-head"><h3>Payments by day</h3></div>
+          <div class="bars">
+            <div class="bar" style="height:55%"><span>Mon</span></div>
+            <div class="bar" style="height:70%"><span>Tue</span></div>
+            <div class="bar" style="height:45%"><span>Wed</span></div>
+            <div class="bar" style="height:85%"><span>Thu</span></div>
+            <div class="bar" style="height:100%"><span>Fri</span></div>
+            <div class="bar" style="height:60%"><span>Sat</span></div>
+            <div class="bar" style="height:30%"><span>Sun</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>Reconciliation</h3></div>
+          <div class="recon">
+            <div class="line"><span>Captured by PayPing</span><b>23</b></div>
+            <div class="line"><span>Shown in GCash app</span><b>23</b></div>
+            <div class="line"><span>Difference</span><span class="ok">✓ 0 — all accounted for</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ FOOT ============ -->
+  <div class="foot">
+    <b>Scope note:</b> PayPing reports on payments received through this GCash number only —
+    not cash, card, or other wallets. It's a payment-confirmation tool with reporting, not a full POS.
+    &nbsp;·&nbsp; Mockup for client review · product name &amp; branding are placeholders.
+  </div>
+</div>
+
+<script>
+  // ---------- palette switcher ----------
+  document.querySelectorAll('.swatch').forEach(function (s) {
+    s.addEventListener('click', function () {
+      document.querySelectorAll('.swatch').forEach(function (x) { x.classList.remove('active'); });
+      s.classList.add('active');
+      document.documentElement.setAttribute('data-palette', s.dataset.p);
+    });
+  });
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (x) { x.classList.remove('active'); });
+      document.querySelectorAll('.stage').forEach(function (x) { x.classList.remove('active'); });
+      t.classList.add('active');
+      document.getElementById('stage-' + t.dataset.stage).classList.add('active');
+    });
+  });
+
+  // ---------- seed data ----------
+  var names = ['Juan D.', 'Maria S.', 'Ana R.', 'Leo M.', 'Cathy P.', 'Ben T.', 'Rico G.', 'Ella F.'];
+  var seeds = [
+    { who: 'Juan D.',  amt: 150,  ref: '1234567890', t: '2:14 PM', m: 'c' },
+    { who: 'Maria S.', amt: 85,   ref: null,          t: '2:02 PM', m: 'a' },
+    { who: 'Ana R.',   amt: 320,  ref: '9988776655', t: '1:47 PM', m: 'c' }
+  ];
+  var counter = 23, total = 4285;
+
+  function peso(n) { return '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 }); }
+
+  function capCard(p) {
+    return '<div class="cap flash"><div class="r1"><span class="who">' + p.who + '</span>' +
+      '<span class="amt">' + peso(p.amt) + '</span></div>' +
+      '<div class="meta"><span>' + p.t + '</span><span class="ref">' +
+      (p.ref ? 'Ref ' + p.ref : 'no ref') + '</span></div></div>';
+  }
+  function paidCard(p) {
+    var tag = p.ref ? '<span class="tag c">C · ref ' + p.ref + '</span>' : '<span class="tag a">A · by amount</span>';
+    return '<div class="paid flash"><div class="check">✓</div><div class="body">' +
+      '<div class="top"><span class="amt">' + peso(p.amt) + '</span><span class="time">' + p.t + '</span></div>' +
+      '<div class="sub"><span>from ' + p.who + '</span>' + tag + '</div></div></div>';
+  }
+
+  var phoneBody = document.getElementById('phone-body');
+  var feed = document.getElementById('cashier-feed');
+  var dashRows = document.getElementById('dash-rows');
+
+  seeds.forEach(function (p) {
+    phoneBody.insertAdjacentHTML('beforeend', capCard(p));
+    feed.insertAdjacentHTML('beforeend', paidCard(p));
+  });
+
+  // ---------- simulate ----------
+  document.getElementById('simulate').addEventListener('click', function () {
+    var who = names[Math.floor(seeds.length * 7 % names.length)];
+    // vary deterministically without Date/Math.random reliance for repeatability
+    var pick = (counter * 37) % names.length;
+    who = names[pick];
+    var amt = [50, 75, 100, 120, 150, 200, 250, 320][(counter * 13) % 8];
+    var hasRef = (counter % 3) !== 1;
+    var ref = hasRef ? String(1000000000 + (counter * 8675309) % 8999999999) : null;
+    var mins = 15 + (counter % 40);
+    var t = 'just now';
+    var p = { who: who, amt: amt, ref: ref, t: t, m: hasRef ? 'c' : 'a' };
+
+    phoneBody.insertAdjacentHTML('afterbegin', capCard(p).replace('beforeend', ''));
+    // place newest right under the note
+    var note = phoneBody.querySelector('.app-note');
+    note.insertAdjacentHTML('afterend', capCard(p));
+    // remove the accidental duplicate at top
+    // (afterbegin added one above the note; drop it)
+    if (phoneBody.firstElementChild && phoneBody.firstElementChild.classList.contains('cap')) {
+      phoneBody.removeChild(phoneBody.firstElementChild);
+    }
+
+    feed.insertAdjacentHTML('afterbegin', paidCard(p));
+    dashRows.insertAdjacentHTML('afterbegin',
+      '<tr><td>just now</td><td>' + who + '</td><td>' + peso(amt) + '</td><td class="ref">' +
+      (ref || '—') + '</td><td>' + (hasRef ? '<span class="tag c">C</span>' : '<span class="tag a">A</span>') + '</td></tr>');
+
+    counter++; total += amt;
+    document.getElementById('d-total').textContent = peso(total).replace('.00', '');
+    document.getElementById('d-count').textContent = counter + ' payments';
+  });
+
+  // ---------- reader on/off ----------
+  var on = true;
+  var sw = document.getElementById('reader-switch');
+  function setReader(state) {
+    on = state;
+    sw.classList.toggle('off', !on);
+    var rp = document.getElementById('reader-pill');
+    var cp = document.getElementById('cashier-pill');
+    var ds = document.getElementById('d-status');
+    var banner = document.getElementById('cashier-banner');
+    var ongoing = document.getElementById('ongoing');
+    var pbg = document.getElementById('p-bg');
+    var phb = document.getElementById('p-hb');
+    if (on) {
+      rp.className = 'status-pill'; rp.innerHTML = '<span class="dot" style="background:currentColor"></span> Online';
+      cp.className = 'status-pill'; cp.innerHTML = '<span class="dot" style="background:currentColor"></span> Reader online';
+      ds.style.color = 'var(--good)'; ds.textContent = '● Online';
+      banner.classList.remove('show');
+      ongoing.style.background = 'rgba(11,166,120,.10)'; ongoing.style.color = 'var(--good)';
+      ongoing.textContent = '🔔 PayPing is running · reading payments';
+      pbg.style.color = 'var(--good)'; pbg.textContent = '● Active';
+      phb.style.color = 'var(--good)'; phb.textContent = '12s ago';
+    } else {
+      rp.className = 'status-pill off'; rp.innerHTML = '● Offline';
+      cp.className = 'status-pill off'; cp.innerHTML = '● Reader offline';
+      ds.style.color = 'var(--warn)'; ds.textContent = '● Offline';
+      banner.classList.add('show');
+      ongoing.style.background = 'var(--warn-bg)'; ongoing.style.color = 'var(--warn)';
+      ongoing.textContent = '⚠ PayPing stopped · payments not being read';
+      pbg.style.color = 'var(--warn)'; pbg.textContent = '● Stopped';
+      phb.style.color = 'var(--warn)'; phb.textContent = '3 min ago';
+    }
+  }
+  sw.addEventListener('click', function () { setReader(!on); });
+</script>
