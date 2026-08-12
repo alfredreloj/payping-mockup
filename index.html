@@ -79,14 +79,26 @@
   @media (max-width: 720px) { .flow { grid-template-columns: 1fr; } .flow .arw { transform: rotate(90deg); } }
 
   /* ---------- screen viewer ---------- */
+  .demo-hint { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink-soft); margin-bottom: 12px; }
+  .demo-hint b { color: var(--accent); }
+  .demo-hint .pointer { font-size: 17px; animation: bob 1.1s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
   .controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-  .tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: var(--shadow); }
-  .tab { border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-weight: 600; font-size: 14px; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
-  .tab.active { background: var(--accent); color: var(--accent-ink); }
+  .tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 5px; box-shadow: var(--shadow); gap: 4px; }
+  .tab { border: 1px solid transparent; background: var(--bg); color: var(--ink-soft); font: inherit; font-weight: 600; font-size: 14px; padding: 9px 18px; border-radius: 8px; cursor: pointer; transition: background .15s, color .15s, transform .06s, box-shadow .15s; }
+  .tab:hover:not(.active) { color: var(--ink); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .tab:active { transform: translateY(1px); }
+  .tab.active { background: var(--accent); color: var(--accent-ink); box-shadow: 0 3px 10px -2px rgba(10,37,64,.35); }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-  .btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 14px; padding: 9px 16px; border-radius: 10px; cursor: pointer; box-shadow: var(--shadow); }
-  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 14px; padding: 9px 16px; border-radius: 10px; cursor: pointer; box-shadow: var(--shadow); transition: transform .06s, box-shadow .15s; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; position: relative; }
+  .btn.primary:hover { transform: translateY(-1px); }
   .btn:active { transform: translateY(1px); }
+  /* attention ring — signals the button is pressable */
+  #simulate::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; animation: ring 1.9s ease-out infinite; }
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 var(--accent); opacity: .5; } 100% { box-shadow: 0 0 0 12px var(--accent); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .demo-hint .pointer, #simulate::after { animation: none; } }
 
   .stage { display: none; }
   .stage.active { display: block; }
@@ -254,6 +266,10 @@
   </div>
 
   <!-- ============ CONTROLS ============ -->
+  <div class="demo-hint">
+    <span class="pointer">👇</span>
+    Click a screen to explore — then hit <b>Simulate a GCash payment</b> to watch one arrive live.
+  </div>
   <div class="controls">
     <div class="tabs">
       <button class="tab active" data-stage="phone">📱 Phone app</button>
